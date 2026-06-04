@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sagara Information Control</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#eaf0f5;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+.header{background:#0a3d5c;color:white;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{width:46px;height:46px;border-radius:10px;background:#0077b6;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:30px;height:30px}
+.header-title h1{font-size:16px;font-weight:600;letter-spacing:.02em;color:white}
+.header-title p{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+.header-right{margin-left:auto;text-align:right}
+.header-right .ts{font-size:10px;color:rgba(255,255,255,.55)}
+.header-right .tv{font-size:13px;font-weight:600;color:#48cae4}
+.refresh-btn{margin-top:4px;background:rgba(255,255,255,.15);border:none;color:white;font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer}
+.refresh-btn:hover{background:rgba(255,255,255,.25)}
+
+/* ── STATUS BAR ── */
+.status-bar{background:#e2edf5;border-bottom:1px solid #c8d8e4;padding:5px 16px;display:flex;gap:8px;align-items:center;font-size:11px;flex-shrink:0}
+.pill{padding:2px 10px;border-radius:10px;font-weight:500}
+.pill-ok{background:#d4edda;color:#155724}
+.pill-low{background:#cce5f0;color:#004a7a}
+.pill-high{background:#f8d7da;color:#721c24}
+.pill-warn{background:#fff3cd;color:#856404}
+
+/* ── BODY ── */
+.body{display:flex;flex:1;min-height:0}
+
+/* ── LEFT NAV ── */
+.nav-col{width:140px;flex-shrink:0;background:#f0f4f7;border-right:1px solid #cdd8e0;padding:10px 0;display:flex;flex-direction:column;gap:2px}
+.nav-btn{width:100%;border:none;background:transparent;text-align:left;padding:11px 12px;cursor:pointer;font-size:12px;font-weight:500;color:#4a5568;border-left:3px solid transparent;display:flex;flex-direction:column;gap:3px;transition:all .15s}
+.nav-btn:hover{background:#e2eaf0;color:#0a3d5c}
+.nav-btn.active{background:white;border-left-color:#0077b6;color:#0a3d5c}
+.nav-divider{height:1px;background:#dde5ec;margin:6px 12px}
+.nav-btn.print-btn{color:#856404}
+.nav-btn.print-btn:hover{background:#fff8e1}
+.nav-badge{font-size:10px;padding:1px 7px;border-radius:10px;display:inline-block}
+.badge-ok{background:#d4edda;color:#155724}
+.badge-warn{background:#fff3cd;color:#856404}
+
+/* ── CENTER ── */
+.params-col{flex:1;padding:14px;overflow-y:auto;background:white}
+.params-col h2{font-size:13px;font-weight:600;color:#0a3d5c;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e0e8ef;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chip{font-size:10px;background:#e7f4fb;color:#0077b6;padding:2px 8px;border-radius:10px;font-weight:400}
+.chip-time{font-size:10px;color:#999;font-weight:400}
+.param-grid{display:flex;flex-direction:column;gap:10px}
+.param-card{border-radius:10px;overflow:hidden}
+.param-card.ok{border:1.5px solid #28a745;background:#f4fff7}
+.param-card.low{border:1.5px solid #0077b6;background:#e8f4fb}
+.param-card.high{border:1.5px solid #dc3545;background:#fff5f5}
+.param-head{display:flex;align-items:center;gap:8px;padding:8px 12px}
+.cb{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;color:white}
+.param-card.ok .cb{background:#28a745}
+.param-card.low .cb{background:#0077b6}
+.param-card.high .cb{background:#dc3545}
+.pname{font-size:12px;font-weight:600;color:#2d3748;flex:1}
+.param-title{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.pdesc{
+  font-size:10px;
+  color:#6b7280;
+  font-weight:400;
+  margin-top:2px;
+  line-height:1.3;
+}
+.sbadge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.param-card.ok .sbadge{background:#d4edda;color:#155724}
+.param-card.low .sbadge{background:#cce5f0;color:#004a7a}
+.param-card.high .sbadge{background:#f8d7da;color:#721c24}
+.param-body{padding:4px 12px 10px}
+.val-row{display:flex;align-items:baseline;gap:5px;margin-bottom:4px}
+.val{font-size:22px;font-weight:600}
+.param-card.ok .val{color:#155724}
+.param-card.low .val{color:#0054a3}
+.param-card.high .val{color:#a71d2a}
+.unit{font-size:11px;color:#888}
+.std-label{font-size:10px;color:#999}
+.std-range{font-size:10px;background:rgba(0,0,0,.04);padding:2px 7px;border-radius:5px;color:#555;display:inline-block;margin-top:2px}
+.param-reco{
+  margin-top:8px;
+  font-size:11px;
+  line-height:1.4;
+  color:#555;
+  padding:6px 8px;
+  background:#f8fafc;
+  border-radius:6px;
+}
+
+/* ── PRINT PANEL ── */
+.print-panel{padding:14px;background:white;display:flex;flex-direction:column;gap:14px}
+.print-panel h2{font-size:13px;font-weight:600;color:#0a3d5c;padding-bottom:8px;border-bottom:1px solid #e0e8ef}
+.date-picker-wrap{display:flex;flex-direction:column;gap:6px}
+.date-picker-wrap label{font-size:11px;color:#666;font-weight:500}
+.date-picker-wrap select,.date-picker-wrap input[type=date]{padding:8px 10px;border:1px solid #cdd8e0;border-radius:8px;font-size:13px;background:white;width:100%}
+.print-go{margin-top:4px;background:#0a3d5c;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;width:100%}
+.print-go:hover{background:#0077b6}
+.print-go:disabled{background:#aaa;cursor:not-allowed}
+.print-msg{font-size:12px;color:#666;text-align:center;min-height:18px}
+.avail-dates{max-height:140px;overflow-y:auto;border:1px solid #e0e8ef;border-radius:8px}
+.avail-dates button{width:100%;padding:8px 12px;border:none;background:transparent;text-align:left;font-size:12px;cursor:pointer;border-bottom:1px solid #f0f0f0;color:#333}
+.avail-dates button:last-child{border-bottom:none}
+.avail-dates button:hover{background:#e8f4fb;color:#0077b6}
+.avail-dates button.selected{background:#e8f4fb;font-weight:600;color:#0077b6}
+
+/* ── RIGHT RECO ── */
+.reco-col{width:155px;flex-shrink:0;padding:14px 10px;background:#f8fafb;border-left:1px solid #dde5ec;overflow-y:auto}
+.reco-col h2{font-size:12px;font-weight:600;color:#0a3d5c;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid #dde5ec}
+.reco-item{background:white;border:1px solid #f0c040;border-radius:8px;padding:8px;margin-bottom:8px}
+.reco-item.crit{border-color:#dc3545}
+.ri-label{font-size:10px;color:#999}
+.ri-action{font-size:11px;font-weight:600;color:#333}
+.reco-item.crit .ri-action{color:#a71d2a}
+.ri-time{font-size:10px;color:#aaa;margin-top:2px}
+.reco-none{font-size:11px;color:#28a745;text-align:center;padding:16px 0}
+
+/* ── FOOTER ── */
+.footer{background:#0a3d5c;color:rgba(255,255,255,.4);text-align:center;font-size:10px;padding:6px;letter-spacing:.05em;flex-shrink:0}
+
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;height:120px;color:#888;font-size:13px;gap:8px}
+.spinner{width:18px;height:18px;border:2px solid #ddd;border-top-color:#0077b6;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── REPLACE THIS URL WITH YOUR DEPLOYED WEB APP URL ── -->
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbx4xtMa5-vRsLroFXLqUkpY4AFOPKHxnszq6SXXkHRQ5Xz5c8VcrZ0f48PnCYlco82T/exec';
+</script>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 30 30" fill="none">
+      <path d="M5 22 Q10 10 15 14 Q20 18 25 8" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M5 26 Q10 16 15 19 Q20 22 25 13" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="15" cy="12" r="3" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.5"/>
+    </svg>
+  </div>
+  <div class="header-title">
+    <h1>Sagara Information Control</h1>
+    <p>Water Treatment Monitoring System</p>
+  </div>
+  <div class="header-right">
+    <div class="ts">Last data update</div>
+    <div class="tv" id="last-update">–</div>
+    <button class="refresh-btn" onclick="loadLatest()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="status-bar" id="status-bar"><span style="color:#888">Loading...</span></div>
+
+<div class="body">
+  <div class="nav-col" id="nav-col">
+    <button class="nav-btn active" onclick="switchSheet('Feed Water')">
+      <span>💧 Feed Water</span><span class="nav-badge" id="badge-fw">–</span>
+    </button>
+    <button class="nav-btn" onclick="switchSheet('RO Process')">
+      <span>🔩 RO Process</span><span class="nav-badge" id="badge-ro">–</span>
+    </button>
+    <button class="nav-btn" onclick="switchSheet('Permeate')">
+      <span>✅ Permeate</span><span class="nav-badge" id="badge-pe">–</span>
+    </button>
+    <div class="nav-divider"></div>
+    <button class="nav-btn print-btn" onclick="switchSheet('__print__')">
+      <span>🖨 Print Report</span><span style="font-size:10px;color:#999">PDF by date</span>
+    </button>
+  </div>
+
+  <div class="params-col" id="center-col">
+    <div class="loading"><div class="spinner"></div> Fetching live data…</div>
+  </div>
+
+  <div class="reco-col" id="reco-col">
+    <h2 id="reco-title">Recommendation</h2>
+    <div id="reco-list"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<div class="footer">Copyright · Sagara · 2026</div>
+
+<script>
+const SHEET_NAMES = ['Feed Water','RO Process','Permeate'];
+const RECOMMENDATIONS = {
+
+  // =====================
+  // FEED WATER
+  // =====================
+
+  'Salinity': {
+    low: 'Periksa kemungkinan pencampuran air tawar atau kesalahan sensor salinitas.',
+    high: 'Periksa kondisi intake dan lakukan penyesuaian recovery RO.'
+  },
+
+  'Conductivity': {
+    low: 'Verifikasi sensor conductivity dan kualitas feed water.',
+    high: 'Periksa kenaikan kandungan garam terlarut pada air baku.'
+  },
+
+  'Turbidity': {
+    low: 'Kondisi sangat baik, tidak diperlukan tindakan.',
+    high: 'Lakukan backwash filter dan periksa sistem pretreatment.'
+  },
+
+  'PH': {
+    low: 'Tambahkan chemical alkali (NaOH/Caustic Soda) sesuai prosedur.',
+    high: 'Tambahkan chemical acid (HCl atau Sulfuric Acid) sesuai SOP.'
+  },
+
+  'Temperature': {
+    low: 'Monitor performa membran karena flux dapat menurun.',
+    high: 'Periksa sumber panas dan risiko fouling membran.'
+  },
+
+  // =====================
+  // RO PROCESS
+  // =====================
+
+  'Inlet Pressure': {
+    low: 'Periksa feed pump, valve dan kemungkinan kebocoran.',
+    high: 'Periksa valve restriksi atau kemungkinan blockage.'
+  },
+
+  'Outlet Pressure': {
+    low: 'Periksa performa high pressure pump.',
+    high: 'Periksa scaling atau fouling pada membran.'
+  },
+
+  'Differential Pressure': {
+    low: 'Kondisi normal.',
+    high: 'Indikasi fouling membran, lakukan CIP jika diperlukan.'
+  },
+
+  'Flowrate': {
+    low: 'Periksa feed pump, filter dan kondisi membran.',
+    high: 'Verifikasi flowmeter dan setting pompa.'
+  },
+
+  'Recovery Rate': {
+    low: 'Optimalkan tekanan operasi dan aliran feed.',
+    high: 'Risiko scaling meningkat, kurangi recovery rate.'
+  },
+
+  // =====================
+  // PERMEATE
+  // =====================
+
+  'PH Permeate': {
+    low: 'Tambahkan dosing NaOH atau remineralisasi sesuai SOP.',
+    high: 'Periksa sistem chemical dosing dan lakukan koreksi pH.'
+  },
+
+  'Production Rate': {
+    low: 'Periksa fouling membran dan performa pompa.',
+    high: 'Verifikasi flowmeter dan kondisi operasi.'
+  },
+
+  'Salt Rejection': {
+    low: 'Periksa kemungkinan kerusakan membran atau seal membrane.',
+    high: 'Kondisi sangat baik.'
+  }
+};
+const PARAM_DESCRIPTIONS = {
+
+  // Feed Water
+  'Salinity':'Kadar garam terlarut dalam air baku.',
+  'Conductivity':'Kemampuan air menghantarkan listrik.',
+  'Turbidity':'Tingkat kekeruhan akibat partikel tersuspensi.',
+  'PH':'Tingkat keasaman atau kebasaan air.',
+  'Temperature':'Suhu air saat pengukuran.',
+
+  // RO Process
+  'Inlet Pressure':'Tekanan masuk ke sistem RO.',
+  'Outlet Pressure':'Tekanan keluar dari sistem RO.',
+  'Differential Pressure':'Selisih tekanan inlet dan outlet.',
+  'Flowrate':'Debit aliran air dalam sistem.',
+  'Recovery Rate':'Persentase air yang berhasil diproses.',
+
+  // Permeate
+  'PH Permeate':'Tingkat keasaman air hasil RO.',
+  'Production Rate':'Jumlah air permeate yang dihasilkan.',
+  'Salt Rejection':'Efisiensi membran dalam menolak garam.'
+};
+let liveData = null;
+let activeSheet = 'Feed Water';
+let selectedDate = '';
+let availDates = [];
+
+// ── Data fetch ──────────────────────────────────────────────
+async function loadLatest() {
+  try {
+    const r = await fetch(API_URL + '?action=latest');
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    liveData = d;
+    document.getElementById('last-update').textContent = new Date(d.generatedAt).toLocaleString('id-ID',{hour12:false});
+    renderAll();
+  } catch(e) {
+    document.getElementById('center-col').innerHTML = `<div style="padding:20px;color:#a71d2a;font-size:13px">⚠ Gagal memuat data: ${e.message}<br><small>Pastikan API_URL sudah diisi dan script sudah di-deploy.</small></div>`;
+  }
+}
+
+async function loadAvailDates() {
+  try {
+    const r = await fetch(API_URL + '?action=dates');
+    const d = await r.json();
+    availDates = d.dates || [];
+    renderPrintPanel();
+  } catch(e){ availDates = []; }
+}
+
+// ── Routing ─────────────────────────────────────────────────
+function switchSheet(name) {
+  activeSheet = name;
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    const targets = ['Feed Water','RO Process','Permeate','__print__'];
+    b.classList.toggle('active', targets[i] === name);
+  });
+  if (name === '__print__') {
+    renderPrintPanel();
+  } else {
+    renderParams();
+    renderReco();
+  }
+}
+
+// ── Status bar ───────────────────────────────────────────────
+function renderStatusBar() {
+  if (!liveData) return;
+  let ok=0, low=0, high=0;
+  SHEET_NAMES.forEach(n => {
+    const s = liveData.sheets[n];
+    if (!s || s.error) return;
+    const row = s.latest;
+    const std = s.standards;
+    Object.keys(std).forEach(param => {
+      const v = parseFloat(row[param]);
+      if (isNaN(v)) return;
+      if (v < std[param].min) low++;
+      else if (v > std[param].max) high++;
+      else ok++;
+    });
+  });
+  const bar = document.getElementById('status-bar');
+  bar.innerHTML = `<span style="color:#666;font-size:11px">All sheets:</span>
+    <span class="pill pill-ok">✓ ${ok} In range</span>
+    ${low  ? `<span class="pill pill-low">↓ ${low} Below std</span>` : ''}
+    ${high ? `<span class="pill pill-high">↑ ${high} Above std</span>` : ''}`;
+}
+
+// ── Nav badges ───────────────────────────────────────────────
+function renderBadges() {
+  if (!liveData) return;
+  const ids = {'Feed Water':'badge-fw','RO Process':'badge-ro','Permeate':'badge-pe'};
+  SHEET_NAMES.forEach(n => {
+    const el = document.getElementById(ids[n]);
+    if (!el) return;
+    const s = liveData.sheets[n];
+    const warn = s && !s.error && s.latest && s.latest.Status === 'Warning';
+    el.textContent = warn ? 'Warning' : 'Normal';
+    el.className = 'nav-badge ' + (warn ? 'badge-warn' : 'badge-ok');
+  });
+}
+
+// ── Params panel ─────────────────────────────────────────────
+function getStatus(v, std) {
+  if (v < std.min) return 'low';
+  if (v > std.max) return 'high';
+  return 'ok';
+}
+function statusLabel(s){ return s==='ok'?'In range':s==='low'?'Below std':'Above std'; }
+function getRecommendation(param, status){
+  if(status === 'ok'){
+    return 'Parameter berada dalam rentang standar.';
+  }
+
+  if(RECOMMENDATIONS[param] && RECOMMENDATIONS[param][status]){
+    return RECOMMENDATIONS[param][status];
+  }
+
+  return '-';
+}
+function fmtVal(v, param) {
+  if (['Salinity','Conductivity'].includes(param)) return Number(v).toLocaleString('id-ID');
+  if (['Turbidity','Ph'].includes(param)) return Number(v).toFixed(2);
+  return v;
+}
+
+function renderParams() {
+  const col = document.getElementById('center-col');
+  if (!liveData) { col.innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>'; return; }
+  const sh = liveData.sheets[activeSheet];
+  if (!sh || sh.error) { col.innerHTML = `<div style="padding:20px;color:#888">Sheet tidak ditemukan: ${activeSheet}</div>`; return; }
+
+  const row = sh.latest;
+  const std = sh.standards;
+  const params = Object.keys(std);
+  const dateStr = row['Tanggal'] || '';
+  const timeStr = row['Jam'] || '';
+
+  col.innerHTML = `
+    <h2>${sheetIcon(activeSheet)} ${activeSheet}
+      <span class="chip">Latest reading</span>
+      <span class="chip-time">${dateStr} ${timeStr}</span>
+    </h2>
+    <div class="param-grid" id="param-grid"></div>`;
+
+  const grid = document.getElementById('param-grid');
+  params.forEach(param => {
+    const v = parseFloat(row[param]);
+    const s = getStatus(v, std[param]);
+    const card = document.createElement('div');
+    card.className = `param-card ${s}`;
+    card.innerHTML = `
+      <div class="param-head">
+  <div class="cb">✓</div>
+
+  <div class="param-title">
+    <span class="pname">${param}</span>
+    <span class="pdesc">
+      ${PARAM_DESCRIPTIONS[param] || ''}
+    </span>
+  </div>
+
+  <span class="sbadge">${statusLabel(s)}</span>
+</div>
+      <div class="param-body">
+        <div class="val-row">
+          <span class="val">${isNaN(v)?row[param]:fmtVal(v,param)}</span>
+          <span class="unit">${std[param].unit||''}</span>
+        </div>
+        <div class="std-label">Standard range:</div>
+<span class="std-range">
+${std[param].min.toLocaleString('id-ID')} – ${std[param].max.toLocaleString('id-ID')} ${std[param].unit||''}
+</span>
+
+<div class="param-reco">
+💡 ${getRecommendation(param,s)}
+</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── Reco panel ───────────────────────────────────────────────
+function renderReco() {
+
+  const list = document.getElementById('reco-list');
+
+  if (!liveData) return;
+
+  const sh = liveData.sheets[activeSheet];
+
+  if (!sh || sh.error) {
+    list.innerHTML = '<div class="reco-none">–</div>';
+    return;
+  }
+
+  const row = sh.latest;
+  const std = sh.standards;
+
+  let html = '';
+
+  Object.keys(std).forEach(param => {
+
+    const value = parseFloat(row[param]);
+
+    if (isNaN(value)) return;
+
+    let status = '';
+
+    if (value < std[param].min) {
+      status = 'low';
+    }
+    else if (value > std[param].max) {
+      status = 'high';
+    }
+    else {
+      return;
+    }
+
+    html += `
+      <div class="reco-item ${status === 'high' ? 'crit' : ''}">
+        <div class="ri-label">${param}</div>
+        <div class="ri-action">
+          ${status === 'low' ? '⬇' : '⬆'}
+          ${getRecommendation(param,status)}
+        </div>
+        <div class="ri-time">
+          Value : ${value} ${std[param].unit || ''}
+        </div>
+      </div>
+    `;
+
+  });
+
+  if(html === ''){
+    html = '<div class="reco-none">✓ All parameters normal</div>';
+  }
+
+const warningCount =
+  (html.match(/reco-item/g) || []).length;
+
+document.getElementById('reco-title').innerHTML =
+  warningCount > 0
+  ? `Recommendation (${warningCount})`
+  : 'Recommendation'; 
+ list.innerHTML = html;
+}
+// ── Print panel ──────────────────────────────────────────────
+function renderPrintPanel() {
+  const col = document.getElementById('center-col');
+  col.innerHTML = `
+    <div class="print-panel">
+      <h2>🖨 Print Report PDF</h2>
+      <div class="date-picker-wrap">
+        <label>Pilih tanggal (input manual):</label>
+        <input type="date" id="manual-date" onchange="onManualDate(this.value)">
+      </div>
+      <div class="date-picker-wrap">
+        <label>Atau pilih dari tanggal tersedia:</label>
+        <div class="avail-dates" id="avail-dates-list">
+          ${availDates.length === 0 ? '<div style="padding:10px;font-size:12px;color:#999">Memuat daftar tanggal…</div>' : ''}
+        </div>
+      </div>
+      <div class="print-msg" id="print-msg">Pilih tanggal lalu klik tombol di bawah.</div>
+      <button class="print-go" id="print-go" onclick="generatePDF()" disabled>⬇ Download PDF Report</button>
+    </div>`;
+
+  renderDateList();
+  if (availDates.length === 0) loadAvailDates();
+
+  document.getElementById('reco-col').querySelector('#reco-list').innerHTML =
+    '<div class="reco-none" style="padding:20px 0">Pilih sheet untuk melihat rekomendasi.</div>';
+}
+
+function renderDateList() {
+  const el = document.getElementById('avail-dates-list');
+  if (!el) return;
+  if (availDates.length === 0) {
+    el.innerHTML = '<div style="padding:10px;font-size:12px;color:#999">Tidak ada data tanggal tersedia.</div>';
+    return;
+  }
+  el.innerHTML = availDates.map(d =>
+    `<button class="${d===selectedDate?'selected':''}" onclick="onDateSelect('${d}')">${d}</button>`
+  ).join('');
+}
+
+function onManualDate(v) {
+  selectedDate = v;
+  renderDateList();
+  if (v) { document.getElementById('print-go').disabled = false; document.getElementById('print-msg').textContent = `Tanggal dipilih: ${v}`; }
+}
+
+function onDateSelect(d) {
+  selectedDate = d;
+  const manEl = document.getElementById('manual-date');
+  if (manEl) manEl.value = d;
+  renderDateList();
+  document.getElementById('print-go').disabled = false;
+  document.getElementById('print-msg').textContent = `Tanggal dipilih: ${d}`;
+}
+
+// ── PDF Generator ────────────────────────────────────────────
+async function generatePDF() {
+  if (!selectedDate) return;
+  const btn = document.getElementById('print-go');
+  const msg = document.getElementById('print-msg');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating PDF…';
+  msg.textContent = 'Mengambil data dari server…';
+
+  try {
+    const r = await fetch(`${API_URL}?action=byDate&date=${selectedDate}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    let y = 0;
+function drawPageHeader() {
+  doc.setFillColor(10, 61, 92);
+  doc.rect(0, 0, W, 32, 'F');
+
+  doc.setTextColor(255,255,255);
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica','bold');
+  doc.text('SAGARA INFORMATION CONTROL', W/2, 13, {align:'center'});
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text('Water Treatment Monitoring Report', W/2, 20, {align:'center'});
+
+  doc.setFontSize(9);
+  doc.text(
+    `Report Date: ${selectedDate}   |   Generated: ${new Date().toLocaleString('id-ID')}`,
+    W/2,
+    27,
+    {align:'center'}
+  );
+
+  return 38;
+}
+
+    // ── Cover header ──
+    doc.setFillColor(10, 61, 92);
+    doc.rect(0, 0, W, 32, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text('SAGARA INFORMATION CONTROL', W/2, 13, {align:'center'});
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text('Water Treatment Monitoring Report', W/2, 20, {align:'center'});
+    doc.setFontSize(9);
+    doc.text(`Report Date: ${selectedDate}   |   Generated: ${new Date().toLocaleString('id-ID')}`, W/2, 27, {align:'center'});
+    y = drawPageHeader();
+
+    // ── Per sheet ──
+    SHEET_NAMES.forEach(shName => {
+      const sh = data.sheets[shName];
+      if (!sh || !sh.rows || sh.rows.length === 0) return;
+
+      const params = Object.keys(sh.standards);
+      const rows = sh.rows;
+
+      // Section header
+      if (y > 240) { doc.addPage(); y = drawPageHeader(); }
+      doc.setFillColor(0, 119, 182);
+      doc.rect(10, y, W-20, 8, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(11); doc.setFont('helvetica','bold');
+      doc.text(shName.toUpperCase(), 14, y+5.5);
+      y += 12;
+
+      // Standards reference
+      doc.setTextColor(80,80,80);
+      doc.setFontSize(8); doc.setFont('helvetica','italic');
+      doc.text('Standard reference: ' + params.map(p => {
+        const s = sh.standards[p];
+        return `${p}: ${s.min.toLocaleString('id-ID')}–${s.max.toLocaleString('id-ID')} ${s.unit||''}`;
+      }).join('  |  '), 10, y);
+      y += 6;
+
+      // Table headers
+      const colLabels = ['Time', ...params, 'Status', 'Action'];
+      const colWidths = [18, ...params.map(() => Math.floor((W-20-18-22-28)/params.length)), 22, 28];
+
+      // Build table body
+      const body = rows.map(row => {
+        return [
+          row['Jam'] || '',
+          ...params.map(p => {
+            const v = parseFloat(row[p]);
+            const std = sh.standards[p];
+            if (isNaN(v)) return String(row[p]||'');
+            if (['Salinity','Conductivity'].includes(p)) return v.toLocaleString('id-ID');
+            if (['Turbidity','Ph'].includes(p)) return v.toFixed(2);
+            return String(v);
+          }),
+          row['Status'] || '',
+          row['Action'] || 'None'
+        ];
+      });
+
+      // Color logic per cell
+      doc.autoTable({
+        head: [colLabels],
+        body,
+        startY: y,
+        margin: {left:10, right:10},
+        theme: 'grid',
+        headStyles: { fillColor:[10,61,92], textColor:255, fontSize:8, fontStyle:'bold', cellPadding:2 },
+        bodyStyles: { fontSize:7.5, cellPadding:2 },
+        columnStyles: colWidths.reduce((acc,w,i) => { acc[i]={cellWidth:w}; return acc; }, {}),
+        didParseCell: function(d) {
+          if (d.section !== 'body') return;
+          const colIdx = d.column.index;
+          if (colIdx === 0 || colIdx >= params.length+1) return;
+          const param = params[colIdx-1];
+          const std = sh.standards[param];
+          const v = parseFloat(d.cell.raw);
+          if (isNaN(v)) return;
+          if (v < std.min) { d.cell.styles.fillColor=[232,244,251]; d.cell.styles.textColor=[0,74,122]; }
+          else if (v > std.max) { d.cell.styles.fillColor=[255,245,245]; d.cell.styles.textColor=[167,29,42]; }
+          else { d.cell.styles.fillColor=[244,255,247]; d.cell.styles.textColor=[21,87,36]; }
+        },
+        didDrawPage: function(d) { y = d.cursor.y; }
+      });
+
+      y = doc.lastAutoTable.finalY + 10;
+    });
+
+    // ── Footer on last page ──
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8); doc.setTextColor(150);
+      doc.text(`Copyright · Sagara · 2026  |  Page ${i} of ${pageCount}`, W/2, 290, {align:'center'});
+    }
+
+    doc.save(`Sagara_Report_${selectedDate}.pdf`);
+    msg.textContent = `✅ PDF berhasil didownload: Sagara_Report_${selectedDate}.pdf`;
+  } catch(e) {
+    msg.textContent = `❌ Error: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Download PDF Report';
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function sheetIcon(n) {
+  return n==='Feed Water'?'💧':n==='RO Process'?'🔩':'✅';
+}
+
+function renderAll() {
+  renderStatusBar();
+  renderBadges();
+  if (activeSheet === '__print__') { renderPrintPanel(); return; }
+  renderParams();
+  renderReco();
+}
+
+// ── Auto-refresh every 60 seconds ───────────────────────────
+loadLatest();
+setInterval(loadLatest, 60000);
+</script>
+</body>
+</html>
